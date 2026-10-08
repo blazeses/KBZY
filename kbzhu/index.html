@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#A3224F">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17121A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="КБЖУ по фото">
+<meta name="description" content="Определение примерного КБЖУ еды по фотографии с помощью AI">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>КБЖУ по фото</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="splash" aria-hidden="true"><img src="icon-192.png" alt=""><b>КБЖУ по фото</b></div>
+<main id="v"></main>
+<nav id="nav"></nav>
+<div id="m" hidden></div>
+<input id="f" type="file" accept="image/*" hidden>
+<input id="c" type="file" accept="image/*" capture="environment" hidden>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

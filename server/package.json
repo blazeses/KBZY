@@ -1,0 +1,13 @@
+{
+  "name": "kbzhu-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Локальный сервер и прокси в Gemini для приложения «КБЖУ по фото»",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

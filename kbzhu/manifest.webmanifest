@@ -1,0 +1,16 @@
+{
+  "name": "КБЖУ по фото",
+  "short_name": "КБЖУ",
+  "description": "Определение примерного КБЖУ еды по фотографии с помощью AI",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F6F3F7",
+  "theme_color": "#A3224F",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
