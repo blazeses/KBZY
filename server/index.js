@@ -1,7 +1,7 @@
 // Локальный сервер «КБЖУ по фото».
 // 1) Отдаёт статику из ../kbzhu по адресу http://localhost:3000
-// 2) Принимает POST /api/analyze-food (или /) и проксирует фото в Gemini.
-// Ключ хранится в переменной окружения GEMINI_API_KEY (файл .env подхватывается автоматически).
+// 2) Принимает POST /api/analyze-food (или /) и проксирует фото в DeepSeek Vision.
+// Ключ хранится в переменной окружения DEEPSEEK_API_KEY (файл .env подхватывается автоматически).
 // Запуск: node index.js   (нужен Node.js 18+)
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -13,7 +13,7 @@ import { request as https } from 'node:https';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = normalize(join(__dirname, '..', 'kbzhu'));
 const PORT = Number(process.env.PORT || 3000);
-const MODEL = process.env.MODEL || 'gemini-2.5-flash';
+const MODEL = process.env.MODEL || 'deepseek-flash';
 
 // Минимальный загрузчик .env без зависимостей (не перезаписывает существующие переменные).
 function loadEnv(file) {
@@ -29,26 +29,18 @@ function loadEnv(file) {
 }
 loadEnv(join(__dirname, '..', '.env'));
 
-const PROMPT = `Ты нутрициолог. Определи все продукты на фото, учитывай количество одинаковых предметов. Для каждого оцени массу порции в граммах и значения на 100 г по справочным данным (USDA или аналог). Не изображай точность: если продукт или размер порции определить сложно, поставь низкую confidence и задай один уточняющий вопрос в поле question. Если на фото нет еды, верни is_food=false. Названия на русском.`;
-const N = { type: 'NUMBER' }, S = { type: 'STRING' };
-const SCHEMA = {
-  type: 'OBJECT',
-  required: ['is_food', 'foods'],
-  properties: {
-    is_food: { type: 'BOOLEAN' },
-    dish_name: S,
-    note: S,
-    question: { type: 'STRING', nullable: true },
-    foods: {
-      type: 'ARRAY',
-      items: {
-        type: 'OBJECT',
-        required: ['name', 'weight_g', 'kcal_100', 'protein_100', 'fat_100', 'carbs_100', 'confidence'],
-        properties: { name: S, weight_g: N, kcal_100: N, protein_100: N, fat_100: N, carbs_100: N, confidence: N }
-      }
-    }
-  }
-};
+const PROMPT = `Ты нутрициолог. Определи все продукты на фото, учитывай количество одинаковых предметов. Для каждого продукта оцени массу порции в граммах и значения на 100 г по справочным данным (USDA или аналог). Не изображай точность: если продукт или размер порции определить сложно, поставь низкую confidence и задай один уточняющий вопрос в поле question. Если на фото нет еды, верни is_food=false. Названия на русском.
+
+Верни ТОЛЬКО валидный JSON без пояснений и без markdown, строго в таком формате (json):
+{
+  "is_food": true,
+  "dish_name": "Курица с рисом",
+  "note": "Размер порции определён приблизительно",
+  "question": null,
+  "foods": [
+    {"name": "Куриная грудка", "weight_g": 150, "kcal_100": 165, "protein_100": 31, "fat_100": 3.6, "carbs_100": 0, "confidence": 0.87}
+  ]
+}`;
 
 const MIME = {
   '.html': 'text/html;charset=utf-8', '.css': 'text/css;charset=utf-8', '.js': 'text/javascript;charset=utf-8',
@@ -71,18 +63,30 @@ const send = (req, res, status, obj) => {
   res.end(JSON.stringify(obj));
 };
 
-function callGemini(image, mime, hint) {
-  if (!process.env.GEMINI_API_KEY) {
-    return Promise.reject({ status: 500, msg: 'Ключ GEMINI_API_KEY не задан. Добавьте его в файл .env.' });
+function callDeepSeek(image, mime, hint) {
+  if (!process.env.DEEPSEEK_API_KEY) {
+    return Promise.reject({ status: 500, msg: 'Ключ DEEPSEEK_API_KEY не задан. Добавьте его в файл .env.' });
   }
   const body = JSON.stringify({
-    contents: [{ parts: [{ text: PROMPT + (hint ? '\n' + String(hint).slice(0, 200) : '') }, { inline_data: { mime_type: mime || 'image/jpeg', data: image } }] }],
-    generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.2 }
+    model: MODEL,
+    messages: [
+      { role: 'system', content: PROMPT },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: hint ? `Проанализируй это фото. Уточнение: ${String(hint).slice(0, 200)}` : 'Проанализируй это фото еды.' },
+          { type: 'image_url', image_url: { url: `data:${mime || 'image/jpeg'};base64,${image}` } }
+        ]
+      }
+    ],
+    response_format: { type: 'json_object' },
+    max_tokens: 2000,
+    temperature: 0.1
   });
   return new Promise((resolve, reject) => {
-    const rq = https(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+    const rq = https('https://api.deepseek.com/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY, 'Content-Length': Buffer.byteLength(body) }
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.DEEPSEEK_API_KEY, 'Content-Length': Buffer.byteLength(body) }
     }, res => {
       let data = '';
       res.on('data', c => data += c);
@@ -90,12 +94,12 @@ function callGemini(image, mime, hint) {
         if (res.statusCode !== 200) {
           let msg = `Ошибка AI (${res.statusCode})`;
           try { msg = JSON.parse(data)?.error?.message || msg; } catch {}
-          return reject({ status: 502, msg: msg + '. Проверьте ключ и лимиты.' });
+          return reject({ status: 502, msg: msg + '. Проверьте ключ и баланс.' });
         }
         try {
           const j = JSON.parse(data);
-          const t = j.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (!t) return reject({ status: 502, msg: 'AI вернул пустой ответ.' });
+          const t = j.choices?.[0]?.message?.content;
+          if (!t) return reject({ status: 502, msg: 'AI вернул пустой ответ. Повторите.' });
           JSON.parse(t);
           resolve(t);
         } catch { reject({ status: 502, msg: 'AI вернул неверный ответ. Повторите.' }); }
@@ -121,7 +125,7 @@ const server = createServer(async (req, res) => {
       try { b = JSON.parse(raw || '{}'); } catch { return send(req, res, 400, { error: 'Неверный запрос' }); }
       if (!b.image || b.image.length > 6e6) return send(req, res, 400, { error: 'Нет фото или оно слишком большое' });
       try {
-        const t = await callGemini(b.image, b.mime, b.hint);
+        const t = await callDeepSeek(b.image, b.mime, b.hint);
         res.writeHead(200, { 'Content-Type': 'application/json;charset=utf-8', ...corsHeaders(req) });
         res.end(t);
       } catch (e) { send(req, res, e.status || 500, { error: e.msg || 'Ошибка сервера' }); }

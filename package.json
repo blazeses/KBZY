@@ -1,0 +1,12 @@
+{
+  "name": "kbzhu",
+  "version": "1.0.0",
+  "private": true,
+  "description": "КБЖУ по фото — PWA с анализом еды через DeepSeek Vision",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

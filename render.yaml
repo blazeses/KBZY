@@ -1,0 +1,12 @@
+# Render Blueprint — бесплатный деплой «в один клик».
+# 1) Залейте проект в GitHub. 2) render.com → New → Blueprint → выберите репозиторий.
+# 3) После деплоя задайте секрет DEEPSEEK_API_KEY в панели (Environment).
+services:
+  - type: web
+    name: kbzhu
+    runtime: node
+    plan: free
+    startCommand: npm start
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false   # значение задаётся вручную в панели Render (не хранится в репозитории)

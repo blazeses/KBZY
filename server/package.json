@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Локальный сервер и прокси в Gemini для приложения «КБЖУ по фото»",
+  "description": "Локальный сервер и прокси в DeepSeek для приложения «КБЖУ по фото»",
   "scripts": {
     "start": "node index.js"
   },
