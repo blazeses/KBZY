@@ -19,6 +19,8 @@ button,input,select{font:inherit;color:inherit}button{cursor:pointer;border:0;ba
 .item span,.entry span{display:block;color:var(--mu);font-size:.85rem}.item em{color:var(--ac);font-style:normal}
 .it{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}.ig{display:grid;gap:2px;min-width:0}.ir{display:flex;align-items:center;gap:8px;flex:none}
 .ig b{word-break:break-word}.item .mac{font-size:.8rem;margin-top:3px}
+.item .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}.item .tags i{font-style:normal;font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--ac2);color:var(--ac)}
+.item .it{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}.item .ig{display:grid;gap:2px;min-width:0}.item .ir{display:flex;align-items:center;gap:8px;flex:none}.item .conf{display:inline-flex}
 .entry{justify-content:flex-start;padding:10px}.entry img,.ph{width:72px;height:72px;border-radius:14px;object-fit:cover;background:var(--ac2);flex:none}
 .total .kcal{font:600 3.2rem/1 var(--fs)}.total small{font:500 1rem system-ui;color:var(--mu)}.mac{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--mu);font-size:.92rem}
 .conf{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;font-size:.78rem;font-weight:600;white-space:nowrap}

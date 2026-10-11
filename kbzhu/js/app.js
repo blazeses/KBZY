@@ -19,6 +19,9 @@ const confAvg=it=>{const c=it.filter(i=>i.conf!=null).map(i=>i.conf);return c.le
 const confLvl=c=>c==null?'':c>=.7?'hi':c>=.4?'mid':'lo';
 const confTxt=c=>c==null?'':c>=.7?'Высокая уверенность':c>=.4?'Средняя уверенность':'Низкая уверенность';
 const pm=(i,k)=>r(i[k]*i.weight/100);
+const STL={raw:'сырое',boiled:'варёное',fried:'жареное',baked:'запечённое',stewed:'тушёное',grilled:'гриль'},stL=s=>STL[s]||s;
+const sizeQ=q=>/размер|порци|грамм|вес|сколько/i.test(String(q||''));
+const askFallback=q=>sizeQ(q)?['Маленькая','Средняя','Большая']:['Да','Нет','Не знаю'];
 
 const views={
 home:()=>`<h1>КБЖУ по фото</h1><p class=sub>Сфотографируй еду — AI оценит состав и пищевую ценность.</p>
@@ -29,8 +32,8 @@ result(){const c=S.cur,t=sum(c.items),avg=confAvg(c.items),lvl=confLvl(avg);
 return `${S.img?`<img class=pv src="${S.img}" alt="">`:''}<h2 class=mealname>${esc(c.name)}</h2><div class=badge>Примерная оценка. Точность зависит от фотографии и размера порции</div>
 ${c.err?`<div class="card warn">${esc(c.err)}</div>`:''}${c.note?`<p class=sub>${esc(c.note)}</p>`:''}
 ${avg!=null?`<div class="conf head ${lvl}"><i></i>${confTxt(avg)} · ${r(avg*100)}%</div>`:''}
-${c.ask?`<section class=card><h3>${esc(c.ask)}</h3><div class=chips>${['Маленькая','Средняя','Большая'].map(x=>`<button class=chip data-a=ask data-v="${x}">${x}</button>`).join('')}<button class=chip data-a=ask data-v=manual>Указать вес</button></div></section>`:''}
-${c.items.map((i,n)=>`<button class=item data-a=edit data-i=${n}><span class=it><span class=ig><b>${esc(i.name)}</b><span>${r(i.weight)} г · ${r(i.kcal*i.weight/100)} ккал</span><span class=mac>Б ${pm(i,'p')} · Ж ${pm(i,'f')} · У ${pm(i,'c')} г${i.conf!=null?` · ${i.conf<.5?'AI не уверен':'уверенность'} ${r(i.conf*100)}%`:''}</span></span><span class=ir>${i.conf!=null?`<span class="conf ${confLvl(i.conf)}">${r(i.conf*100)}%</span>`:''}<em>▾</em></span></span></button>`).join('')}
+${c.ask?`<section class=card><h3>${esc(c.ask)}</h3><div class=chips>${(c.askOpts&&c.askOpts.length?c.askOpts:askFallback(c.ask)).map(x=>`<button class=chip data-a=ask data-v="${esc(x)}">${esc(x)}</button>`).join('')}<button class=chip data-a=ask data-v=custom>Свой ответ</button>${sizeQ(c.ask)?'<button class=chip data-a=ask data-v=manual>Указать вес</button>':''}</div></section>`:''}
+${c.items.map((i,n)=>`<button class=item data-a=edit data-i=${n}><span class=it><span class=ig><b>${esc(i.name)}</b>${(i.state||i.hidden)?`<span class=tags>${i.state?`<i>${stL(i.state)}</i>`:''}${i.hidden?'<i>скрытый жир/соус</i>':''}</span>`:''}<span>${r(i.weight)} г · ${r(i.kcal*i.weight/100)} ккал</span><span class=mac>Б ${pm(i,'p')} · Ж ${pm(i,'f')} · У ${pm(i,'c')} г${i.conf!=null?` · ${i.conf<.5?'AI не уверен':'уверенность'} ${r(i.conf*100)}%`:''}</span></span><span class=ir>${i.conf!=null?`<span class="conf ${confLvl(i.conf)}">${r(i.conf*100)}%</span>`:''}<em>▾</em></span></span></button>`).join('')}
 <button class="btn alt" data-a=edit data-i=-1>+ Добавить продукт</button>
 <section class="card total"><h3>Итого</h3><div class=kcal>${r(t.kcal)}<small> ккал</small></div><div class=mac><span>Белки ${r(t.p)} г</span><span>Жиры ${r(t.f)} г</span><span>Углеводы ${r(t.c)} г</span></div></section>
 ${c.items.length?`<select id=meal>${MEALS.map(m=>`<option ${m===c.meal?'selected':''}>${m}</option>`).join('')}</select><button class="btn big" data-a=save>${S.id?'Сохранить изменения':'Сохранить в дневник'}</button>`:''}
@@ -62,7 +65,7 @@ async function run(hint){S.tab='busy';render();
   draw();const timer=setInterval(()=>{stage=Math.min(stage+1,steps.length);draw()},850);
   try{const d=await analyze(S.img,hint,store.cfg().url);
     if(!d.is_food||!d.foods?.length)S.cur={items:[],meal:guess(),name:'Блюдо',err:'Еда на фото не найдена. Попробуйте другой снимок при хорошем освещении или добавьте продукты вручную.'};
-    else S.cur={name:d.dish_name||'Блюдо',note:d.note,ask:d.question,meal:guess(),items:d.foods.map(f=>({name:f.name,weight:f.weight_g,kcal:f.kcal_100,p:f.protein_100,f:f.fat_100,c:f.carbs_100,conf:f.confidence}))}
+    else S.cur={name:d.dish_name||'Блюдо',note:d.note,meal:guess(),ask:d.needs_clarification?(d.clarification_question||d.question||null):(d.question||null),askOpts:Array.isArray(d.clarification_options)&&d.clarification_options.length?d.clarification_options:null,items:d.foods.map(f=>({name:f.name,weight:f.weight_g,kcal:f.kcal_100,p:f.protein_100,f:f.fat_100,c:f.carbs_100,conf:f.confidence,state:f.processing_state||null,hidden:!!f.is_hidden_fat_or_sauce}))}
   }catch(e){S.cur={items:[],meal:guess(),name:'Блюдо',err:e.message}}
   clearInterval(timer);S.tab='result';render()}
 
@@ -74,7 +77,7 @@ function edit(i){const it=i<0?{name:'',weight:100,kcal:0,p:0,f:0,c:0}:S.cur.item
 const persist=rec=>{const e=store.entries(),mk=()=>S.id?e.map(x=>x.id===S.id?rec:x):[rec,...e];if(store.save(mk()))return true;rec.thumb=null;return store.save(mk())};
 const A={
   shot:()=>$('#c').click(),gal:()=>$('#f').click(),go:({t})=>{S.tab=t;render()},per:({v})=>{S.period=v;render()},
-  ask({v}){let h;if(v==='manual'){const w=parseFloat(prompt('Общий вес порции, г'));if(!w)return;h=`Общий вес порции: ${w} г.`}else h=`Размер порции: ${v.toLowerCase()}.`;run(h)},
+  ask({v}){let a;if(v==='manual'){const w=parseFloat(prompt('Общий вес порции, г'));if(!w)return;a=`общий вес порции ${w} г`}else if(v==='custom'){const t=(prompt('Ваш ответ')||'').trim();if(!t)return;a=t}else a=v;run(S.cur.ask?`Ответ на уточняющий вопрос «${S.cur.ask}»: ${a}.`:`Уточнение: ${a}.`)},
   edit:({i})=>edit(+i),eclose:close,
   esave({i}){const o={name:$('#e_name').value.trim()||'Продукт',weight:val('weight'),kcal:val('kcal'),p:val('p'),f:val('f'),c:val('c')};i=+i;i<0?S.cur.items.push(o):S.cur.items[i]={...S.cur.items[i],...o};close();render()},
   erm({i}){S.cur.items.splice(+i,1);close();render()},
