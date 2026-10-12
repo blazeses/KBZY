@@ -8,7 +8,7 @@ const TABS=[['home','Главная'],['diary','Дневник'],['history','И�
 const N=[['Калории','kcal','ккал'],['Белки','p','г'],['Жиры','f','г'],['Углеводы','c','г']];
 const COOK=[['oil_sunflower','Подсолнечное масло'],['oil_olive','Оливковое масло'],['butter','Сливочное масло'],['steam','На пару / без масла'],['oven','В духовке']];
 const COOKHINT={oil_sunflower:'жарили на подсолнечном (растительном) масле',oil_olive:'жарили на оливковом масле',butter:'жарили на сливочном масле',steam:'готовили на пару, без добавления масла',oven:'запекали в духовке, масла минимум'};
-const S={tab:'home',cur:null,img:null,thumb:null,id:null,ts:null,period:'week',place:null,cook:null};
+const S={tab:'home',cur:null,img:null,thumb:null,id:null,ts:null,period:'week',place:null,cook:null,note:''};
 const dk=t=>new Date(t).toDateString(),todays=()=>store.entries().filter(e=>dk(e.ts)===dk(Date.now()));
 const tot=es=>sum(es.flatMap(e=>e.items)),macro=t=>`${r(t.p)}/${r(t.f)}/${r(t.c)}`;
 const fmt=ts=>new Date(ts).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -43,18 +43,43 @@ function toItems(d){
   });
 }
 
-// Карточка «Где готовили»: дом / ресторан, а для дома — на чём готовили.
+// Собирает текст-уточнение из выбранного контекста (дом/ресторан, масло, комментарий).
+function buildHint(){
+  const p=[];
+  if(S.place==='home')p.push('Блюдо приготовлено дома');
+  if(S.place==='restaurant')p.push('Блюдо из ресторана или кафе: порции и количество масла обычно больше');
+  if(S.cook&&COOKHINT[S.cook])p.push('Дома '+COOKHINT[S.cook]);
+  const n=(S.note||'').trim();
+  if(n)p.push('Комментарий пользователя по блюду: '+n);
+  return p.join('. ');
+}
+
+// Карточка «Где готовили» на экране результата.
 function placeCard(c){
   if(c.err||!c.items||!c.items.length)return '';
-  if(S.place===null)return `<section class=card><h3>Где готовили это блюдо?</h3><p class=sub>Так расчёт скрытого масла будет точнее.</p><div class=chips><button class=chip data-a=place data-v=home>🏠 Дома</button><button class=chip data-a=place data-v=restaurant>🍽 В ресторане / кафе</button></div></section>`;
-  if(S.place==='home'&&S.cook===null)return `<section class=card><h3>На чём готовили дома?</h3><div class=chips>${COOK.map(([v,n])=>`<button class=chip data-a=cook data-v="${v}">${n}</button>`).join('')}</div></section>`;
   const l=(COOK.find(x=>x[0]===S.cook)||[])[1];
-  const txt=S.place==='home'?('дома'+(l?', '+l.toLowerCase():'')):'в ресторане / кафе';
-  return `<section class=card><h3>Где готовили</h3><p class=sub>Учтено: ${txt}.</p><button class=link data-a=place data-v=reset>Изменить</button></section>`;
+  if(S.place===null&&!(c.userNote||'').trim()){
+    return `<section class=card><h3>Где готовили это блюдо?</h3><p class=sub>Уточните — расчёт скрытого масла станет точнее.</p><div class=chips><button class=chip data-a=place data-v=home>🏠 Дома</button><button class=chip data-a=place data-v=restaurant>🍽 В ресторане / кафе</button></div></section>`;
+  }
+  if(S.place==='home'&&S.cook===null){
+    return `<section class=card><h3>На чём готовили дома?</h3><div class=chips>${COOK.map(([v,n])=>`<button class=chip data-a=cook data-v="${v}">${n}</button>`).join('')}</div></section>`;
+  }
+  const parts=[];
+  if(S.place==='home')parts.push('🏠 дома'+(l?', '+l.toLowerCase():''));
+  if(S.place==='restaurant')parts.push('🍽 из заведения');
+  if((c.userNote||'').trim())parts.push('комментарий: '+c.userNote.trim());
+  return `<section class=card><h3>Учтено при расчёте</h3><p class=sub>${esc(parts.join(' · '))}</p><button class=link data-a=place data-v=reset>Изменить</button></section>`;
 }
 
 const views={
 home:()=>`<h1>КБЖУ по фото</h1><p class=sub>Сфотографируй еду — AI оценит состав и пищевую ценность.</p>
+<section class=card><h3>Где готовили блюдо?</h3>
+<div class=seg><button class="${S.place==='home'?'on':''}" data-a=setplace data-v=home>🏠 Дома</button><button class="${S.place==='restaurant'?'on':''}" data-a=setplace data-v=restaurant>🍽 В ресторане</button></div>
+${S.place==='home'?`<div class=chips>${COOK.map(([v,n])=>`<button class="chip${S.cook===v?' sel':''}" data-a=setcook data-v="${v}">${n}</button>`).join('')}</div>`:''}
+</section>
+<section class=card><h3>Детали блюда</h3><p class=sub>Опишите словами — AI учтёт это при расчёте. Поле необязательное.</p>
+<div class=note><textarea id=note maxlength=300 placeholder="Например: жарила на оливковом масле, без соли, порция большая">${esc(S.note)}</textarea><span class=cnt id=cnt>${(S.note||'').length}/300</span></div>
+</section>
 <button class="btn big" data-a=shot>📷 Сфотографировать</button><button class="btn big alt" data-a=gal>🖼 Загрузить из галереи</button>
 <section class=card><h3>Сегодня</h3>${bars(tot(todays()),store.goals())}</section><button class=link data-a=go data-t=history>Открыть историю</button>`,
 busy:()=>`<img class=pv src="${S.img}" alt=""><section class=card><h3 id=bt>Отправляем фотографию…</h3><div class=prog><i id=pb></i></div><p class=sub id=ps></p></section>`,
@@ -94,7 +119,7 @@ const load=f=>new Promise((ok,no)=>{const u=URL.createObjectURL(f),i=new Image()
 const shrink=(i,m,q)=>{const k=Math.min(1,m/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);return c.toDataURL('image/jpeg',q)};
 async function pick(f){if(!f)return;if(!f.type.startsWith('image/'))return toast('Выберите файл изображения');
   try{const i=await load(f);S.img=shrink(i,1024,.8);S.thumb=shrink(i,480,.6)}catch(e){return toast(e.message)}
-  S.id=null;S.ts=null;S.place=null;S.cook=null;run('')}
+  S.id=null;S.ts=null;run(buildHint())}
 
 // Реальная загрузка: прогресс берётся из события отправки файла, а не из таймера.
 async function run(hint){
@@ -119,7 +144,7 @@ async function run(hint){
     if(meta.dish_identified==='not_food'||!items.length){
       S.cur={items:[],meal:guess(),name:'Блюдо',err:'Еда на фото не найдена. Попробуйте другой снимок при хорошем освещении или добавьте продукты вручную.'};
     }else{
-      S.cur={name:meta.dish_identified||d.dish_name||'Блюдо',items,meal:guess(),
+      S.cur={name:meta.dish_identified||d.dish_name||'Блюдо',items,meal:guess(),userNote:(S.note||'').trim(),
         cuisine:meta.cuisine_type||null,anchor:meta.scale_anchor_used||null,
         plate:Number(meta.estimated_plate_diameter_cm)||null,
         range:Array.isArray(tt.calories_range)&&tt.calories_range.length===2?tt.calories_range:null,
@@ -140,6 +165,8 @@ function edit(i){const it=i<0?{name:'',weight:100,kcal:0,p:0,f:0,c:0}:S.cur.item
 const persist=rec=>{const e=store.entries(),mk=()=>S.id?e.map(x=>x.id===S.id?rec:x):[rec,...e];if(store.save(mk()))return true;rec.thumb=null;return store.save(mk())};
 const A={
   shot:()=>$('#c').click(),gal:()=>$('#f').click(),go:({t})=>{S.tab=t;render()},per:({v})=>{S.period=v;render()},
+  setplace({v}){S.place=S.place===v?null:v;if(S.place!=='home')S.cook=null;render()},
+  setcook({v}){S.cook=S.cook===v?null:v;render()},
   place({v}){if(v==='reset'){S.place=null;S.cook=null;render();return}
     S.place=v;S.cook=null;
     if(v==='restaurant')run('Блюдо из ресторана или кафе: порции и количество масла обычно больше, соусы жирнее.');
@@ -155,7 +182,7 @@ const A={
   del({id}){if(!confirm('Удалить запись?'))return;store.save(store.entries().filter(x=>x.id!=id));S.id=null;S.tab='history';render()},
   cfg(){store.setCfg({url:$('#url').value.trim(),theme:$('#theme').value});theme();toast('Настройки сохранены')}};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b)A[b.dataset.a]?.(b.dataset)});
-document.addEventListener('input',e=>{if(e.target.id?.startsWith('e_'))upd()});
+document.addEventListener('input',e=>{if(e.target.id==='note'){S.note=e.target.value;const c=$('#cnt');if(c)c.textContent=S.note.length+'/300';return}if(e.target.id?.startsWith('e_'))upd()});
 document.addEventListener('change',e=>{const k=e.target.dataset.g;if(k)store.setGoals({...store.goals(),[k]:Math.max(1,+e.target.value||1)})});
 $('#f').onchange=$('#c').onchange=e=>{pick(e.target.files[0]);e.target.value=''};
 theme();render();requestAnimationFrame(()=>{const s=$('#splash');if(s){s.classList.add('off');setTimeout(()=>s.remove(),450)}});navigator.serviceWorker?.register('sw.js');

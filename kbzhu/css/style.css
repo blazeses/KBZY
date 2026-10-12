@@ -29,7 +29,12 @@ button,input,select{font:inherit;color:inherit}button{cursor:pointer;border:0;ba
 .conf.mid{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
 .conf.lo{background:color-mix(in srgb,var(--dg) 16%,transparent);color:var(--dg)}
 .conf.head{width:fit-content;margin-top:2px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{padding:10px 16px;border-radius:99px;background:var(--ac2);color:var(--ac);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{padding:10px 16px;border-radius:99px;background:var(--ac2);color:var(--ac);font-weight:500}.chip.sel{background:var(--ac);color:#fff}
+.seg{display:flex;gap:4px;background:var(--bg);border:1px solid var(--bd);padding:4px;border-radius:16px}
+.seg button{flex:1;padding:12px 6px;border-radius:12px;text-align:center;font-weight:600;font-size:.92rem;color:var(--mu);transition:background .18s,color .18s}
+.seg button.on{background:var(--ac);color:#fff}
+.note{position:relative}.note textarea{width:100%;min-height:78px;resize:vertical;padding:12px 14px 22px;border-radius:14px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit;line-height:1.4}.note textarea:focus{outline:none;border-color:var(--ac)}
+.cnt{position:absolute;right:12px;bottom:8px;font-size:.72rem;color:var(--mu);pointer-events:none}
 .mh{display:flex;justify-content:space-between;margin-top:8px}.mh span{font:500 .9rem system-ui;color:var(--mu)}
 label{display:grid;gap:5px;font-size:.88rem;color:var(--mu)}input,select{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
 summary{font-weight:600;cursor:pointer}.goals,.g4{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.g4{margin:0}
